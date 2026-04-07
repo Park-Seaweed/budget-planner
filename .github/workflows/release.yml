@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 버전 추출
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: 빌드
+        run: |
+          swift build -c release
+
+      - name: 앱 번들 생성
+        run: |
+          APP="가계부.app"
+          ASSETS="Sources/Gakyebu/Assets.xcassets/AppIcon.appiconset"
+          BINARY=".build/release/Gakyebu"
+
+          rm -rf "$APP"
+          mkdir -p "$APP/Contents/MacOS"
+          mkdir -p "$APP/Contents/Resources"
+
+          cp "$BINARY" "$APP/Contents/MacOS/Gakyebu"
+
+          # icns 생성
+          ICONSET="/tmp/AppIcon.iconset"
+          rm -rf "$ICONSET"
+          mkdir -p "$ICONSET"
+          ICON="$ASSETS/가계부아이콘-iOS-Default-1024x1024@1x.png"
+          cp "$ICON" "$ICONSET/icon_16x16.png"
+          cp "$ICON" "$ICONSET/icon_16x16@2x.png"
+          cp "$ICON" "$ICONSET/icon_32x32.png"
+          cp "$ICON" "$ICONSET/icon_32x32@2x.png"
+          cp "$ICON" "$ICONSET/icon_128x128.png"
+          cp "$ICON" "$ICONSET/icon_128x128@2x.png"
+          cp "$ICON" "$ICONSET/icon_256x256.png"
+          cp "$ICON" "$ICONSET/icon_256x256@2x.png"
+          cp "$ICON" "$ICONSET/icon_512x512.png"
+          cp "$ICON" "$ICONSET/icon_512x512@2x.png"
+          iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+
+          cp Info.plist "$APP/Contents/Info.plist"
+
+          xattr -cr "$APP"
+          codesign --force --deep --sign - "$APP"
+
+      - name: ZIP 압축
+        run: zip -r 가계부.zip 가계부.app
+
+      - name: appcast.xml 업데이트
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          DATE=$(date -R)
+          cat > docs/appcast.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+              <channel>
+                  <title>가계부 업데이트</title>
+                  <link>https://park-seaweed.github.io/budget-planner/appcast.xml</link>
+                  <description>가계부 앱 업데이트 피드</description>
+                  <item>
+                      <title>버전 $VERSION</title>
+                      <pubDate>$DATE</pubDate>
+                      <sparkle:version>$VERSION</sparkle:version>
+                      <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
+                      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+                      <enclosure
+                          url="https://github.com/Park-Seaweed/budget-planner/releases/download/v${VERSION}/가계부.zip"
+                          sparkle:version="$VERSION"
+                          type="application/octet-stream"
+                      />
+                  </item>
+              </channel>
+          </rss>
+          EOF
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add docs/appcast.xml
+          git commit -m "Update appcast.xml for v$VERSION"
+          git push origin HEAD:main
+
+      - name: GitHub Release 생성 및 업로드
+        uses: softprops/action-gh-release@v2
+        with:
+          files: 가계부.zip
+          name: "가계부 v${{ steps.version.outputs.VERSION }}"
