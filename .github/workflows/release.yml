@@ -32,16 +32,22 @@ jobs:
             echo "SKIP=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: 빌드
+      - name: 빌드 (Universal Binary)
         if: steps.check.outputs.SKIP == 'false'
-        run: swift build -c release
+        run: |
+          swift build -c release --arch arm64
+          swift build -c release --arch x86_64
+          lipo -create \
+            .build/arm64-apple-macosx/release/Gakyebu \
+            .build/x86_64-apple-macosx/release/Gakyebu \
+            -output .build/Gakyebu-universal
 
       - name: 앱 번들 생성
         if: steps.check.outputs.SKIP == 'false'
         run: |
           APP="가계부.app"
           ASSETS="Sources/Gakyebu/Assets.xcassets/AppIcon.appiconset"
-          BINARY=".build/release/Gakyebu"
+          BINARY=".build/Gakyebu-universal"
 
           rm -rf "$APP"
           mkdir -p "$APP/Contents/MacOS"
