@@ -70,9 +70,17 @@ jobs:
           xattr -cr "$APP"
           codesign --force --deep --sign - "$APP"
 
-      - name: ZIP 압축
+      - name: 설치 스크립트 생성 및 ZIP 압축
         if: steps.check.outputs.SKIP == 'false'
-        run: zip -r 가계부.zip 가계부.app
+        run: |
+          cat > "가계부 설치하기.command" << 'EOF'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          xattr -dr com.apple.quarantine "$DIR/가계부.app"
+          open "$DIR/가계부.app"
+          EOF
+          chmod +x "가계부 설치하기.command"
+          zip -r 가계부.zip 가계부.app "가계부 설치하기.command"
 
       - name: appcast.xml 업데이트
         if: steps.check.outputs.SKIP == 'false'
