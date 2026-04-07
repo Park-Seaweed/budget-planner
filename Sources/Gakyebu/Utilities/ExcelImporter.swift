@@ -145,28 +145,33 @@ struct ExcelImporter {
     /// xl/theme/theme1.xml에서 테마 인덱스 → HEX 매핑 추출
     /// 순서: dk1(0), lt1(1), dk2(2), lt2(3), accent1(4)~accent6(9), hlink(10), folHlink(11)
     private static func parseThemePalette(from url: URL) -> [Int: String] {
+        // 태그명 → 테마 인덱스 (OOXML 스펙 고정)
+        let tagToIndex: [String: Int] = [
+            "dk1": 0, "lt1": 1, "dk2": 2, "lt2": 3,
+            "accent1": 4, "accent2": 5, "accent3": 6,
+            "accent4": 7, "accent5": 8, "accent6": 9,
+            "hlink": 10, "folHlink": 11
+        ]
         var palette: [Int: String] = [0: "000000", 1: "FFFFFF"]
         guard let xml = readZipEntry("xl/theme/theme1.xml", from: url) else { return palette }
 
-        let pattern = #"srgbClr val="([0-9A-Fa-f]{6})""#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return palette }
-        let matches = regex.matches(in: xml, range: NSRange(xml.startIndex..., in: xml))
-        let hexValues = matches.compactMap { m -> String? in
-            guard let r = Range(m.range(at: 1), in: xml) else { return nil }
-            return String(xml[r]).uppercased()
-        }
-
-        // dk1/lt1은 거의 항상 sysClr → startIdx=2 (dk2부터)
-        // 단 12개면 dk1/lt1도 srgbClr → startIdx=0
-        // 11개처럼 비정상 케이스는 앞 10개만 사용 (startIdx=2)
-        let startIdx: Int
-        if hexValues.count == 12 {
-            startIdx = 0
-        } else {
-            startIdx = 2
-        }
-        for (i, hex) in hexValues.prefix(12 - startIdx).enumerated() {
-            palette[startIdx + i] = hex
+        // <a:TAG>...<a:srgbClr val="HEX"/>...</a:TAG> 또는 sysClr lastClr 매칭
+        for (tag, idx) in tagToIndex {
+            // srgbClr
+            let pattern = #"<[a-z]+:\#(tag)>[^<]*<[a-z]+:srgbClr\s+val="([0-9A-Fa-f]{6})""#
+            if let regex = try? NSRegularExpression(pattern: pattern),
+               let m = regex.firstMatch(in: xml, range: NSRange(xml.startIndex..., in: xml)),
+               let r = Range(m.range(at: 1), in: xml) {
+                palette[idx] = String(xml[r]).uppercased()
+                continue
+            }
+            // sysClr lastClr (dk1=검정, lt1=흰색 기본값 이미 설정됨)
+            let sysPattern = #"<[a-z]+:\#(tag)>[^<]*<[a-z]+:sysClr\s[^>]*lastClr="([0-9A-Fa-f]{6})""#
+            if let regex = try? NSRegularExpression(pattern: sysPattern),
+               let m = regex.firstMatch(in: xml, range: NSRange(xml.startIndex..., in: xml)),
+               let r = Range(m.range(at: 1), in: xml) {
+                palette[idx] = String(xml[r]).uppercased()
+            }
         }
         return palette
     }
