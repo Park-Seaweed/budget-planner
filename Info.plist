@@ -26,5 +26,9 @@
     <string>6.0</string>
     <key>NSHumanReadableCopyright</key>
     <string>© 2025</string>
+    <key>SUFeedURL</key>
+    <string>https://park-seaweed.github.io/budget-planner/appcast.xml</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
 </dict>
 </plist>
