@@ -35,8 +35,10 @@ jobs:
       - name: 빌드 (Universal Binary)
         if: steps.check.outputs.SKIP == 'false'
         run: |
-          swift build -c release --arch arm64
-          swift build -c release --arch x86_64
+          swift build -c release --arch arm64 \
+            -Xlinker -rpath -Xlinker @loader_path/../Frameworks
+          swift build -c release --arch x86_64 \
+            -Xlinker -rpath -Xlinker @loader_path/../Frameworks
           lipo -create \
             .build/arm64-apple-macosx/release/Gakyebu \
             .build/x86_64-apple-macosx/release/Gakyebu \
@@ -52,6 +54,7 @@ jobs:
           rm -rf "$APP"
           mkdir -p "$APP/Contents/MacOS"
           mkdir -p "$APP/Contents/Resources"
+          mkdir -p "$APP/Contents/Frameworks"
 
           cp "$BINARY" "$APP/Contents/MacOS/Gakyebu"
 
@@ -73,8 +76,6 @@ jobs:
 
           cp Info.plist "$APP/Contents/Info.plist"
 
-          # Sparkle.framework 임베드
-          mkdir -p "$APP/Contents/Frameworks"
           cp -R .build/arm64-apple-macosx/release/Sparkle.framework "$APP/Contents/Frameworks/"
 
           xattr -cr "$APP"
@@ -83,12 +84,12 @@ jobs:
       - name: 설치 스크립트 생성 및 ZIP 압축
         if: steps.check.outputs.SKIP == 'false'
         run: |
-          cat > "가계부 설치하기.command" << 'EOF'
-          #!/bin/bash
-          DIR="$(cd "$(dirname "$0")" && pwd)"
-          xattr -dr com.apple.quarantine "$DIR/가계부.app"
-          open "$DIR/가계부.app"
-          EOF
+          cat > "가계부 설치하기.command" << 'SCRIPT'
+#!/bin/bash
+DIR="$(cd "$(dirname "$0")" && pwd)"
+xattr -dr com.apple.quarantine "$DIR/가계부.app"
+open "$DIR/가계부.app"
+SCRIPT
           chmod +x "가계부 설치하기.command"
           zip -r 가계부.zip 가계부.app "가계부 설치하기.command"
 
@@ -98,27 +99,27 @@ jobs:
           VERSION=${{ steps.version.outputs.VERSION }}
           DATE=$(date -R)
           cat > docs/appcast.xml << EOF
-          <?xml version="1.0" encoding="utf-8"?>
-          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-              <channel>
-                  <title>가계부 업데이트</title>
-                  <link>https://raw.githubusercontent.com/Park-Seaweed/budget-planner/main/docs/appcast.xml</link>
-                  <description>가계부 앱 업데이트 피드</description>
-                  <item>
-                      <title>버전 $VERSION</title>
-                      <pubDate>$DATE</pubDate>
-                      <sparkle:version>$VERSION</sparkle:version>
-                      <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
-                      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-                      <enclosure
-                          url="https://github.com/Park-Seaweed/budget-planner/releases/download/v${VERSION}/가계부.zip"
-                          sparkle:version="$VERSION"
-                          type="application/octet-stream"
-                      />
-                  </item>
-              </channel>
-          </rss>
-          EOF
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>가계부 업데이트</title>
+        <link>https://raw.githubusercontent.com/Park-Seaweed/budget-planner/main/docs/appcast.xml</link>
+        <description>가계부 앱 업데이트 피드</description>
+        <item>
+            <title>버전 $VERSION</title>
+            <pubDate>$DATE</pubDate>
+            <sparkle:version>$VERSION</sparkle:version>
+            <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/Park-Seaweed/budget-planner/releases/download/v${VERSION}/가계부.zip"
+                sparkle:version="$VERSION"
+                type="application/octet-stream"
+            />
+        </item>
+    </channel>
+</rss>
+EOF
 
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
