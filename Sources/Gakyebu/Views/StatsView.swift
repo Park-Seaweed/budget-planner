@@ -13,6 +13,11 @@ struct StatsView: View {
     @State private var period: StatsPeriod = .monthly
     @State private var selectedYear: Int = Calendar.current.component(.year, from: Date())
 
+    private var availableYears: [Int] {
+        let allYears = Set(store.transactions.map { $0.date.year })
+        return Array(allYears).sorted()
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -36,25 +41,38 @@ struct StatsView: View {
                                     .background(DS.card, in: Circle())
                                     .overlay(Circle().stroke(DS.divider, lineWidth: 0.5))
                             }.buttonStyle(.plain)
-                            Text(String(selectedYear) + "년")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(DS.textPrimary)
-                                .frame(minWidth: 60)
+
+                            Menu {
+                                ForEach(availableYears.reversed(), id: \.self) { y in
+                                    Button(String(y) + "년") { selectedYear = y }
+                                }
+                            } label: {
+                                Text(String(selectedYear) + "년")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(DS.textPrimary)
+                                    .frame(minWidth: 60)
+                            }
+                            .buttonStyle(.plain)
+
                             Button {
-                                if selectedYear < Calendar.current.component(.year, from: Date()) { selectedYear += 1 }
+                                selectedYear += 1
                             } label: {
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(selectedYear >= Calendar.current.component(.year, from: Date()) ? DS.textSecondary : DS.textPrimary)
+                                    .foregroundStyle(DS.textPrimary)
                                     .frame(width: 28, height: 28)
                                     .background(DS.card, in: Circle())
                                     .overlay(Circle().stroke(DS.divider, lineWidth: 0.5))
                             }.buttonStyle(.plain)
-                            .disabled(selectedYear >= Calendar.current.component(.year, from: Date()))
                         }
                     }
                 }
                 .padding(.top, 20)
+                .onAppear {
+                    if let latest = availableYears.last {
+                        selectedYear = latest
+                    }
+                }
 
                 switch period {
                 case .weekly:  WeeklyStatsView()
@@ -275,6 +293,12 @@ struct YearlyStatsView: View {
         Array(Set(store.transactions.map { $0.date.year })).sorted()
     }
 
+    private func initBaseYear() {
+        if !availableYears.contains(baseYear), let latest = availableYears.last {
+            baseYear = latest
+        }
+    }
+
     private func yearData(_ year: Int) -> PeriodData {
         let txs = store.transactions.filter { $0.date.year == year }
         return PeriodData(
@@ -301,11 +325,11 @@ struct YearlyStatsView: View {
                 if let comp = comp {
                     comparisonView(base: base, comp: comp)
                 } else {
-                    // 전체 연도 차트
                     let allRows = availableYears.map { yearData($0) }
                     singleView(data: base, title: String(baseYear) + "년 수입/지출", allRows: allRows)
                 }
             }
+            .onAppear { initBaseYear() }
         }
     }
 
