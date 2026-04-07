@@ -47,10 +47,25 @@ jobs:
           chmod +x "가계부 설치하기.command"
           zip -r 가계부.zip 가계부.app "가계부 설치하기.command"
 
+      - name: ZIP 서명
+        if: steps.check.outputs.SKIP == 'false'
+        id: sign
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          SIGN_TOOL=".build/artifacts/sparkle/Sparkle/bin/sign_update"
+          SIG=$(echo "$SPARKLE_PRIVATE_KEY" | "$SIGN_TOOL" --ed-key-file - -p 가계부.zip)
+          LEN=$(wc -c < 가계부.zip | tr -d ' ')
+          echo "SIGNATURE=$SIG" >> $GITHUB_OUTPUT
+          echo "LENGTH=$LEN" >> $GITHUB_OUTPUT
+
       - name: appcast.xml 업데이트
         if: steps.check.outputs.SKIP == 'false'
         run: |
-          bash scripts/update_appcast.sh ${{ steps.version.outputs.VERSION }}
+          bash scripts/update_appcast.sh \
+            ${{ steps.version.outputs.VERSION }} \
+            "${{ steps.sign.outputs.SIGNATURE }}" \
+            "${{ steps.sign.outputs.LENGTH }}"
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add docs/appcast.xml

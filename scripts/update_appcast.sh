@@ -2,8 +2,11 @@
 set -e
 
 VERSION=$1
-if [ -z "$VERSION" ]; then
-  echo "사용법: update_appcast.sh <version>"
+SIGNATURE=$2
+LENGTH=$3
+
+if [ -z "$VERSION" ] || [ -z "$SIGNATURE" ] || [ -z "$LENGTH" ]; then
+  echo "사용법: update_appcast.sh <version> <edSignature> <length>"
   exit 1
 fi
 
@@ -25,6 +28,8 @@ cat > "$PROJECT/docs/appcast.xml" << EOF
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
                 url="https://github.com/Park-Seaweed/budget-planner/releases/download/v${VERSION}/가계부.zip"
+                sparkle:edSignature="$SIGNATURE"
+                length="$LENGTH"
                 sparkle:version="$VERSION"
                 type="application/octet-stream"
             />

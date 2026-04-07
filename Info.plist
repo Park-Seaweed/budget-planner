@@ -28,6 +28,8 @@
 	<string>© 2025</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUPublicEDKey</key>
+	<string>YZiLOo3A2gSsVnpKvwTNVIfOYM89G4OLG+z0kq3oVe4=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
