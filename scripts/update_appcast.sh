@@ -27,7 +27,7 @@ cat > "$PROJECT/docs/appcast.xml" << EOF
             <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/Park-Seaweed/budget-planner/releases/download/v${VERSION}/가계부.zip"
+                url="https://github.com/Park-Seaweed/budget-planner/releases/download/v${VERSION}/budget-planner.zip"
                 sparkle:edSignature="$SIGNATURE"
                 length="$LENGTH"
                 sparkle:version="$VERSION"

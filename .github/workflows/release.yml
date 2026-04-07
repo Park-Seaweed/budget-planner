@@ -45,7 +45,7 @@ jobs:
         run: |
           cp "scripts/가계부 설치하기.command" .
           chmod +x "가계부 설치하기.command"
-          zip -r 가계부.zip 가계부.app "가계부 설치하기.command"
+          zip -r budget-planner.zip 가계부.app "가계부 설치하기.command"
 
       - name: ZIP 서명
         if: steps.check.outputs.SKIP == 'false'
@@ -54,8 +54,8 @@ jobs:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           SIGN_TOOL=".build/artifacts/sparkle/Sparkle/bin/sign_update"
-          SIG=$(echo "$SPARKLE_PRIVATE_KEY" | "$SIGN_TOOL" --ed-key-file - -p 가계부.zip)
-          LEN=$(wc -c < 가계부.zip | tr -d ' ')
+          SIG=$(echo "$SPARKLE_PRIVATE_KEY" | "$SIGN_TOOL" --ed-key-file - -p budget-planner.zip)
+          LEN=$(wc -c < budget-planner.zip | tr -d ' ')
           echo "SIGNATURE=$SIG" >> $GITHUB_OUTPUT
           echo "LENGTH=$LEN" >> $GITHUB_OUTPUT
 
@@ -78,4 +78,4 @@ jobs:
         with:
           tag_name: "v${{ steps.version.outputs.VERSION }}"
           name: "가계부 v${{ steps.version.outputs.VERSION }}"
-          files: 가계부.zip
+          files: budget-planner.zip
