@@ -5,16 +5,16 @@
         <link>https://raw.githubusercontent.com/Park-Seaweed/budget-planner/main/docs/appcast.xml</link>
         <description>가계부 앱 업데이트 피드</description>
         <item>
-            <title>버전 1.1.1</title>
-            <pubDate>Tue, 07 Apr 2026 09:53:27 +0000</pubDate>
-            <sparkle:version>1.1.1</sparkle:version>
-            <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
+            <title>버전 1.1.2</title>
+            <pubDate>Tue, 07 Apr 2026 10:00:15 +0000</pubDate>
+            <sparkle:version>1.1.2</sparkle:version>
+            <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/Park-Seaweed/budget-planner/releases/download/v1.1.1/가계부.zip"
-                sparkle:edSignature="yl87ZskJGif9AH0HUz4cF+5lbscsK9dDFtGPkx2N59XtX0qiG+JJqJPUt2PAOZPoWh7fQD7alYMOocNFWt2ZDw=="
-                length="9191698"
-                sparkle:version="1.1.1"
+                url="https://github.com/Park-Seaweed/budget-planner/releases/download/v1.1.2/budget-planner.zip"
+                sparkle:edSignature="wIn4yaLXObFufVQBPywf+m/enjQd5qZ1A/EewZgqS4q//IiOW7q6iLIZDcmssj8qQpnxskHmvs7+I6siBceNAQ=="
+                length="9194061"
+                sparkle:version="1.1.2"
                 type="application/octet-stream"
             />
         </item>
