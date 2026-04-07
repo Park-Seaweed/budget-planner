@@ -30,6 +30,11 @@ struct GakyebuApp: App {
                 .environmentObject(store)
                 .environmentObject(updater)
                 .task { await store.load() }
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        updater.checkForUpdates()
+                    }
+                }
         }
         .defaultSize(width: 1100, height: 720)
         .commands {
