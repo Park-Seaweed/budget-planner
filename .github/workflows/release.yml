@@ -34,97 +34,27 @@ jobs:
 
       - name: 빌드 (Universal Binary)
         if: steps.check.outputs.SKIP == 'false'
-        run: |
-          swift build -c release --arch arm64 \
-            -Xlinker -rpath -Xlinker @loader_path/../Frameworks
-          swift build -c release --arch x86_64 \
-            -Xlinker -rpath -Xlinker @loader_path/../Frameworks
-          lipo -create \
-            .build/arm64-apple-macosx/release/Gakyebu \
-            .build/x86_64-apple-macosx/release/Gakyebu \
-            -output .build/Gakyebu-universal
+        run: bash scripts/build_universal.sh
 
       - name: 앱 번들 생성
         if: steps.check.outputs.SKIP == 'false'
-        run: |
-          APP="가계부.app"
-          ASSETS="Sources/Gakyebu/Assets.xcassets/AppIcon.appiconset"
-          BINARY=".build/Gakyebu-universal"
+        run: bash scripts/create_bundle.sh
 
-          rm -rf "$APP"
-          mkdir -p "$APP/Contents/MacOS"
-          mkdir -p "$APP/Contents/Resources"
-          mkdir -p "$APP/Contents/Frameworks"
-
-          cp "$BINARY" "$APP/Contents/MacOS/Gakyebu"
-
-          ICONSET="/tmp/AppIcon.iconset"
-          rm -rf "$ICONSET"
-          mkdir -p "$ICONSET"
-          ICON="$ASSETS/가계부아이콘-iOS-Default-1024x1024@1x.png"
-          cp "$ICON" "$ICONSET/icon_16x16.png"
-          cp "$ICON" "$ICONSET/icon_16x16@2x.png"
-          cp "$ICON" "$ICONSET/icon_32x32.png"
-          cp "$ICON" "$ICONSET/icon_32x32@2x.png"
-          cp "$ICON" "$ICONSET/icon_128x128.png"
-          cp "$ICON" "$ICONSET/icon_128x128@2x.png"
-          cp "$ICON" "$ICONSET/icon_256x256.png"
-          cp "$ICON" "$ICONSET/icon_256x256@2x.png"
-          cp "$ICON" "$ICONSET/icon_512x512.png"
-          cp "$ICON" "$ICONSET/icon_512x512@2x.png"
-          iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
-
-          cp Info.plist "$APP/Contents/Info.plist"
-
-          cp -R .build/arm64-apple-macosx/release/Sparkle.framework "$APP/Contents/Frameworks/"
-
-          xattr -cr "$APP"
-          codesign --force --deep --sign - "$APP"
-
-      - name: 설치 스크립트 생성 및 ZIP 압축
+      - name: ZIP 압축
         if: steps.check.outputs.SKIP == 'false'
         run: |
-          cat > "가계부 설치하기.command" << 'SCRIPT'
-#!/bin/bash
-DIR="$(cd "$(dirname "$0")" && pwd)"
-xattr -dr com.apple.quarantine "$DIR/가계부.app"
-open "$DIR/가계부.app"
-SCRIPT
+          cp "scripts/가계부 설치하기.command" .
           chmod +x "가계부 설치하기.command"
           zip -r 가계부.zip 가계부.app "가계부 설치하기.command"
 
       - name: appcast.xml 업데이트
         if: steps.check.outputs.SKIP == 'false'
         run: |
-          VERSION=${{ steps.version.outputs.VERSION }}
-          DATE=$(date -R)
-          cat > docs/appcast.xml << EOF
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-    <channel>
-        <title>가계부 업데이트</title>
-        <link>https://raw.githubusercontent.com/Park-Seaweed/budget-planner/main/docs/appcast.xml</link>
-        <description>가계부 앱 업데이트 피드</description>
-        <item>
-            <title>버전 $VERSION</title>
-            <pubDate>$DATE</pubDate>
-            <sparkle:version>$VERSION</sparkle:version>
-            <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure
-                url="https://github.com/Park-Seaweed/budget-planner/releases/download/v${VERSION}/가계부.zip"
-                sparkle:version="$VERSION"
-                type="application/octet-stream"
-            />
-        </item>
-    </channel>
-</rss>
-EOF
-
+          bash scripts/update_appcast.sh ${{ steps.version.outputs.VERSION }}
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add docs/appcast.xml
-          git commit -m "Update appcast.xml for v$VERSION [skip ci]"
+          git commit -m "Update appcast.xml for v${{ steps.version.outputs.VERSION }} [skip ci]"
           git push origin HEAD:main
 
       - name: 태그 생성 및 Release 업로드
