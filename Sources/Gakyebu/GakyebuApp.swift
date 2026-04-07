@@ -1,19 +1,34 @@
 import SwiftUI
 import Sparkle
 
+final class UpdaterViewModel: ObservableObject {
+    private let updaterController: SPUStandardUpdaterController
+
+    init() {
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: nil,
+            userDriverDelegate: nil
+        )
+    }
+
+    var canCheckForUpdates: Bool { updaterController.updater.canCheckForUpdates }
+
+    func checkForUpdates() {
+        updaterController.updater.checkForUpdates()
+    }
+}
+
 @main
 struct GakyebuApp: App {
     @StateObject private var store = AppStore()
-    private let updaterController = SPUStandardUpdaterController(
-        startingUpdater: true,
-        updaterDelegate: nil,
-        userDriverDelegate: nil
-    )
+    @StateObject private var updater = UpdaterViewModel()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
+                .environmentObject(updater)
                 .task { await store.load() }
         }
         .defaultSize(width: 1100, height: 720)
@@ -21,9 +36,9 @@ struct GakyebuApp: App {
             CommandGroup(replacing: .newItem) {}
             CommandGroup(after: .appInfo) {
                 Button("업데이트 확인...") {
-                    updaterController.updater.checkForUpdates()
+                    updater.checkForUpdates()
                 }
-                .disabled(!updaterController.updater.canCheckForUpdates)
+                .disabled(!updater.canCheckForUpdates)
             }
         }
     }

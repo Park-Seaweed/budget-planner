@@ -3,6 +3,7 @@ import AppKit
 
 struct SettingsView: View {
     @EnvironmentObject var store: AppStore
+    @EnvironmentObject var updater: UpdaterViewModel
 
     @State private var mode: StorageMode   = StorageSettings.mode
     @State private var s3AccessKey: String = StorageSettings.s3AccessKey
@@ -178,6 +179,40 @@ struct SettingsView: View {
                             .buttonStyle(.plain)
                             .disabled(isImporting)
                         }
+                    }
+                }
+                // 앱 정보 & 업데이트
+                SettingSection(title: "앱 정보") {
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("버전")
+                                .font(.system(size: 13))
+                                .foregroundStyle(DS.textPrimary)
+                            Spacer()
+                            Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-")
+                                .font(.system(size: 13, weight: .medium).monospacedDigit())
+                                .foregroundStyle(DS.textSecondary)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+
+                        Divider().opacity(0.4)
+
+                        HStack {
+                            Text("업데이트 확인")
+                                .font(.system(size: 13))
+                                .foregroundStyle(DS.textPrimary)
+                            Spacer()
+                            Button("지금 확인") {
+                                updater.checkForUpdates()
+                            }
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(updater.canCheckForUpdates ? DS.accent : DS.textSecondary)
+                            .buttonStyle(.plain)
+                            .disabled(!updater.canCheckForUpdates)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
                     }
                 }
             }
