@@ -92,20 +92,31 @@ struct StatsView: View {
 
 struct WeeklyStatsView: View {
     @EnvironmentObject var store: AppStore
-    @State private var baseOffset: Int = 0       // 0 = 이번 주
-    @State private var compareOffset: Int? = nil // nil = 비교 안 함
+    @State private var baseOffset: Int = 0
+    @State private var compareOffset: Int? = nil
 
-    private let maxWeeks = 12
-
-    private func weekData(offset: Int) -> (label: String, start: Date, data: PeriodData) {
+    // 가장 오래된 거래일 기준으로 최대 주 수 계산
+    private var maxWeeks: Int {
         let cal = Calendar.current
-        let today = Date()
-        let ws = cal.date(byAdding: .weekOfYear, value: -offset, to: cal.startOfWeek(for: today)) ?? today
-        let we = cal.date(byAdding: .day, value: 6, to: ws) ?? today
+        guard let oldest = store.transactions.map({ $0.date }).min() else { return 4 }
+        let today = cal.startOfWeek(for: Date())
+        let diff = cal.dateComponents([.weekOfYear], from: oldest, to: today).weekOfYear ?? 0
+        return max(diff + 1, 4)
+    }
+
+    private func weekStart(offset: Int) -> Date {
+        let cal = Calendar.current
+        return cal.date(byAdding: .weekOfYear, value: -offset, to: cal.startOfWeek(for: Date())) ?? Date()
+    }
+
+    private func weekData(offset: Int) -> (label: String, data: PeriodData) {
+        let cal = Calendar.current
+        let ws = weekStart(offset: offset)
+        let we = cal.date(byAdding: .day, value: 6, to: ws) ?? ws
         let txs = store.transactions.filter { $0.date >= ws && $0.date <= we }
         let fmt = DateFormatter(); fmt.dateFormat = "M/d"
         let label = fmt.string(from: ws) + "~" + fmt.string(from: we)
-        return (label, ws, PeriodData(
+        return (label, PeriodData(
             label: label,
             income:  txs.filter { $0.type == .income  }.reduce(0) { $0 + $1.amount },
             expense: txs.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
@@ -114,13 +125,22 @@ struct WeeklyStatsView: View {
 
     private func weekPickerLabel(_ offset: Int) -> String {
         let cal = Calendar.current
-        let today = Date()
-        let ws = cal.date(byAdding: .weekOfYear, value: -offset, to: cal.startOfWeek(for: today)) ?? today
-        let we = cal.date(byAdding: .day, value: 6, to: ws) ?? today
+        let ws = weekStart(offset: offset)
+        let we = cal.date(byAdding: .day, value: 6, to: ws) ?? ws
         let fmt = DateFormatter(); fmt.dateFormat = "M/d"
         if offset == 0 { return "이번 주 (" + fmt.string(from: ws) + ")" }
         if offset == 1 { return "저번 주 (" + fmt.string(from: ws) + ")" }
-        return "\(offset)주 전 (" + fmt.string(from: ws) + "~" + fmt.string(from: we) + ")"
+        return fmt.string(from: ws) + "~" + fmt.string(from: we)
+    }
+
+    private var offsetsByYear: [(year: Int, offsets: [Int])] {
+        let cal = Calendar.current
+        var dict: [Int: [Int]] = [:]
+        for i in 0..<maxWeeks {
+            let y = cal.component(.year, from: weekStart(offset: i))
+            dict[y, default: []].append(i)
+        }
+        return dict.keys.sorted(by: >).map { y in (year: y, offsets: dict[y]!) }
     }
 
     var body: some View {
@@ -128,9 +148,7 @@ struct WeeklyStatsView: View {
         let comp = compareOffset.map { weekData(offset: $0) }
 
         VStack(spacing: 16) {
-            // 기간 선택 + 비교 설정
             periodSelector
-            
             if let comp = comp {
                 comparisonView(base: base.data, comp: comp.data)
             } else {
@@ -144,8 +162,12 @@ struct WeeklyStatsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("기준 주").font(.system(size: 11, weight: .semibold)).foregroundStyle(DS.textSecondary)
                 Menu {
-                    ForEach(0..<maxWeeks, id: \.self) { i in
-                        Button(weekPickerLabel(i)) { baseOffset = i }
+                    ForEach(offsetsByYear, id: \.year) { group in
+                        Menu(String(group.year) + "년") {
+                            ForEach(group.offsets, id: \.self) { i in
+                                Button(weekPickerLabel(i)) { baseOffset = i }
+                            }
+                        }
                     }
                 } label: {
                     menuLabel(weekPickerLabel(baseOffset))
@@ -163,9 +185,11 @@ struct WeeklyStatsView: View {
                 Menu {
                     Button("비교 안 함") { compareOffset = nil }
                     Divider()
-                    ForEach(0..<maxWeeks, id: \.self) { i in
-                        if i != baseOffset {
-                            Button(weekPickerLabel(i)) { compareOffset = i }
+                    ForEach(offsetsByYear, id: \.year) { group in
+                        Menu(String(group.year) + "년") {
+                            ForEach(group.offsets.filter { $0 != baseOffset }, id: \.self) { i in
+                                Button(weekPickerLabel(i)) { compareOffset = i }
+                            }
                         }
                     }
                 } label: {
@@ -184,6 +208,7 @@ struct WeeklyStatsView: View {
 struct MonthlyStatsView: View {
     @EnvironmentObject var store: AppStore
     let year: Int
+    @State private var baseYear: Int = Calendar.current.component(.year, from: Date())
     @State private var baseMonth: Int = Calendar.current.component(.month, from: Date())
     @State private var compareYear: Int? = nil
     @State private var compareMonth: Int? = nil
@@ -198,12 +223,11 @@ struct MonthlyStatsView: View {
     }
 
     private var availableYears: [Int] {
-        let allYears = Set(store.transactions.map { $0.date.year })
-        return Array(allYears).sorted()
+        Array(Set(store.transactions.map { $0.date.year })).sorted()
     }
 
     private var categoryBreakdown: [CategoryData] {
-        let exp = store.transactions.filter { $0.date.year == year && $0.type == .expense }
+        let exp = store.transactions.filter { $0.date.year == baseYear && $0.type == .expense }
         let total = exp.reduce(0) { $0 + $1.amount }
         guard total > 0 else { return [] }
         var dict: [String: Int] = [:]
@@ -212,7 +236,7 @@ struct MonthlyStatsView: View {
     }
 
     var body: some View {
-        let base = monthData(year: year, month: baseMonth)
+        let base = monthData(year: baseYear, month: baseMonth)
         let hasCompare = compareYear != nil && compareMonth != nil
         let comp: PeriodData? = hasCompare ? monthData(year: compareYear!, month: compareMonth!) : nil
 
@@ -222,12 +246,16 @@ struct MonthlyStatsView: View {
             if let comp = comp {
                 comparisonView(base: base, comp: comp)
             } else {
-                singleView(data: base, title: String(year) + "년 \(baseMonth)월 수입/지출")
+                singleView(data: base, title: String(baseYear) + "년 \(baseMonth)월 수입/지출")
                 if !categoryBreakdown.isEmpty {
-                    categoryDonut(data: categoryBreakdown, title: String(year) + "년 카테고리별 지출")
+                    categoryDonut(data: categoryBreakdown, title: String(baseYear) + "년 카테고리별 지출")
                 }
             }
         }
+        .onAppear {
+            baseYear = year
+        }
+        .onChange(of: year) { baseYear = $0 }
     }
 
     private var periodSelector: some View {
@@ -235,11 +263,15 @@ struct MonthlyStatsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("기준 월").font(.system(size: 11, weight: .semibold)).foregroundStyle(DS.textSecondary)
                 Menu {
-                    ForEach(1...12, id: \.self) { m in
-                        Button(String(year) + "년 \(m)월") { baseMonth = m }
+                    ForEach(availableYears, id: \.self) { y in
+                        Menu(String(y) + "년") {
+                            ForEach(1...12, id: \.self) { m in
+                                Button("\(m)월") { baseYear = y; baseMonth = m }
+                            }
+                        }
                     }
                 } label: {
-                    menuLabel(String(year) + "년 \(baseMonth)월")
+                    menuLabel(String(baseYear) + "년 \(baseMonth)월")
                 }
                 .buttonStyle(.plain)
             }
@@ -254,12 +286,10 @@ struct MonthlyStatsView: View {
                 Menu {
                     Button("비교 안 함") { compareYear = nil; compareMonth = nil }
                     Divider()
-                    // 전월
                     let prevM = baseMonth == 1 ? 12 : baseMonth - 1
-                    let prevY = baseMonth == 1 ? year - 1 : year
+                    let prevY = baseMonth == 1 ? baseYear - 1 : baseYear
                     Button("전월 (\(String(prevY))년 \(prevM)월)") { compareYear = prevY; compareMonth = prevM }
-                    // 전년 동월
-                    Button("전년 동월 (\(String(year-1))년 \(baseMonth)월)") { compareYear = year - 1; compareMonth = baseMonth }
+                    Button("전년 동월 (\(String(baseYear-1))년 \(baseMonth)월)") { compareYear = baseYear - 1; compareMonth = baseMonth }
                     Divider()
                     ForEach(availableYears, id: \.self) { y in
                         Menu(String(y) + "년") {
