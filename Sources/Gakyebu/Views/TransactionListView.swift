@@ -30,6 +30,11 @@ struct TransactionListView: View {
     private var expense: Int { monthly.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount } }
     private var balance: Int { income - expense }
 
+    private var totalAsset:   Int { store.assets.reduce(0) { $0 + $1.amount } }
+    private var totalExpense:  Int { store.transactions.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount } }
+    private var totalIncome:   Int { store.transactions.filter { $0.type == .income  }.reduce(0) { $0 + $1.amount } }
+    private var netBalance:    Int { totalAsset + totalIncome - totalExpense }
+
     var body: some View {
         VStack(spacing: 0) {
             // ── Header ──────────────────────────────────────────────
@@ -40,8 +45,28 @@ struct TransactionListView: View {
                 HStack(spacing: 12) {
                     SummaryCard(label: "수입",  amount: income,  color: DS.income)
                     SummaryCard(label: "지출",  amount: expense, color: DS.expense)
-                    SummaryCard(label: "잔액",  amount: balance, color: balance >= 0 ? DS.positive : DS.warning)
+                    SummaryCard(label: "월 잔액", amount: balance, color: balance >= 0 ? DS.positive : DS.warning)
                 }
+
+                // 순자산 카드
+                HStack(spacing: 8) {
+                    Image(systemName: "banknote")
+                        .font(.system(size: 12))
+                        .foregroundStyle(DS.textSecondary)
+                    Text("순자산")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(DS.textSecondary)
+                    Text("자산 \(totalAsset.wonFormatted) + 수입 \(totalIncome.wonFormatted) - 지출 \(totalExpense.wonFormatted)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(DS.textSecondary)
+                    Spacer()
+                    Text(netBalance.wonFormatted)
+                        .font(.system(size: 14, weight: .bold).monospacedDigit())
+                        .foregroundStyle(netBalance >= 0 ? DS.positive : DS.expense)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .cardStyle()
 
                 // Filter bar
                 HStack(spacing: 8) {
