@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
     <channel>
         <title>가계부 업데이트</title>
-        <link>https://park-seaweed.github.io/budget-planner/appcast.xml</link>
+        <link>https://raw.githubusercontent.com/Park-Seaweed/budget-planner/main/docs/appcast.xml</link>
         <description>가계부 앱 업데이트 피드</description>
         <item>
             <title>버전 1.0.0</title>
