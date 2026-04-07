@@ -49,6 +49,7 @@ struct ExcelImporter {
         let themePalette = parseThemePalette(from: url)
         let fontColorMap = parseFontColors(from: url, themePalette: themePalette)
 
+
         var transactions: [Transaction] = []
         var skipped = 0
         var sheetErrors: [String] = []
@@ -155,10 +156,17 @@ struct ExcelImporter {
             return String(xml[r]).uppercased()
         }
 
-        // dk1/lt1은 sysClr라 srgbClr 없음 → 10개면 dk2(idx=2)부터, 12개면 0부터
-        let startIdx = 12 - hexValues.count
-        for (i, hex) in hexValues.enumerated() {
-            palette[max(0, startIdx) + i] = hex
+        // dk1/lt1은 거의 항상 sysClr → startIdx=2 (dk2부터)
+        // 단 12개면 dk1/lt1도 srgbClr → startIdx=0
+        // 11개처럼 비정상 케이스는 앞 10개만 사용 (startIdx=2)
+        let startIdx: Int
+        if hexValues.count == 12 {
+            startIdx = 0
+        } else {
+            startIdx = 2
+        }
+        for (i, hex) in hexValues.prefix(12 - startIdx).enumerated() {
+            palette[startIdx + i] = hex
         }
         return palette
     }
