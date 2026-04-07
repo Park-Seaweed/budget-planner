@@ -73,6 +73,10 @@ jobs:
 
           cp Info.plist "$APP/Contents/Info.plist"
 
+          # Sparkle.framework 임베드
+          mkdir -p "$APP/Contents/Frameworks"
+          cp -R .build/arm64-apple-macosx/release/Sparkle.framework "$APP/Contents/Frameworks/"
+
           xattr -cr "$APP"
           codesign --force --deep --sign - "$APP"
 
