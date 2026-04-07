@@ -23,6 +23,17 @@ struct AppData: Codable {
         self.assets = assets
     }
 
+    enum CodingKeys: String, CodingKey {
+        case transactions, budgets, assets
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        transactions = try c.decode([Transaction].self, forKey: .transactions)
+        budgets      = try c.decode([Budget].self,      forKey: .budgets)
+        assets       = try c.decodeIfPresent([Asset].self, forKey: .assets) ?? []
+    }
+
     static var empty: AppData { AppData(transactions: [], budgets: [], assets: []) }
 }
 
