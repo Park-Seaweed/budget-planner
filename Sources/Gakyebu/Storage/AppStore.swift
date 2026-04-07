@@ -5,6 +5,7 @@ import Combine
 final class AppStore: ObservableObject {
     @Published var transactions: [Transaction] = []
     @Published var budgets: [Budget] = []
+    @Published var assets: [Asset] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -32,6 +33,7 @@ final class AppStore: ObservableObject {
             let data = try await storage.load()
             transactions = data.transactions.sorted { $0.date > $1.date }
             budgets      = data.budgets
+            assets       = data.assets
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -41,7 +43,7 @@ final class AppStore: ObservableObject {
     func save() {
         Task {
             do {
-                try await storage.save(AppData(transactions: transactions, budgets: budgets))
+                try await storage.save(AppData(transactions: transactions, budgets: budgets, assets: assets))
             } catch {
                 await MainActor.run { errorMessage = error.localizedDescription }
             }
@@ -106,6 +108,25 @@ final class AppStore: ObservableObject {
         } else if amount > 0 {
             budgets.append(Budget(year: year, month: month, category: category, amount: amount))
         }
+        save()
+    }
+
+    // MARK: - Assets
+
+    func addAsset(_ asset: Asset) {
+        assets.append(asset)
+        save()
+    }
+
+    func updateAsset(_ asset: Asset) {
+        if let idx = assets.firstIndex(where: { $0.id == asset.id }) {
+            assets[idx] = asset
+            save()
+        }
+    }
+
+    func deleteAsset(_ asset: Asset) {
+        assets.removeAll { $0.id == asset.id }
         save()
     }
 

@@ -15,8 +15,15 @@ enum StorageMode: String, Codable, CaseIterable {
 struct AppData: Codable {
     var transactions: [Transaction]
     var budgets: [Budget]
+    var assets: [Asset]
 
-    static var empty: AppData { AppData(transactions: [], budgets: []) }
+    init(transactions: [Transaction], budgets: [Budget], assets: [Asset] = []) {
+        self.transactions = transactions
+        self.budgets = budgets
+        self.assets = assets
+    }
+
+    static var empty: AppData { AppData(transactions: [], budgets: [], assets: []) }
 }
 
 protocol StorageManager: AnyObject {

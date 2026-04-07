@@ -2,6 +2,7 @@ import SwiftUI
 
 enum SidebarItem: String, CaseIterable, Identifiable {
     case transactions = "거래 내역"
+    case assets       = "자산"
     case stats        = "통계"
     case budget       = "예산 설정"
     case categories   = "카테고리 관리"
@@ -12,6 +13,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .transactions: return "list.bullet.rectangle.portrait"
+        case .assets:       return "banknote"
         case .stats:        return "chart.bar.xaxis"
         case .budget:       return "target"
         case .categories:   return "tag"
@@ -32,6 +34,7 @@ struct ContentView: View {
             Group {
                 switch selection ?? .transactions {
                 case .transactions: TransactionListView()
+                case .assets:       AssetView()
                 case .stats:        StatsView()
                 case .budget:       BudgetView()
                 case .categories:   CategoryManagementView()
