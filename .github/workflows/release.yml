@@ -2,8 +2,11 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+
+permissions:
+  contents: write
 
 jobs:
   build-and-release:
@@ -13,15 +16,28 @@ jobs:
       - name: 체크아웃
         uses: actions/checkout@v4
 
-      - name: 버전 추출
+      - name: 버전 읽기
         id: version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Info.plist)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: 이미 릴리즈된 버전인지 확인
+        id: check
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          if git ls-remote --tags origin | grep -q "refs/tags/v$VERSION$"; then
+            echo "SKIP=true" >> $GITHUB_OUTPUT
+          else
+            echo "SKIP=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: 빌드
-        run: |
-          swift build -c release
+        if: steps.check.outputs.SKIP == 'false'
+        run: swift build -c release
 
       - name: 앱 번들 생성
+        if: steps.check.outputs.SKIP == 'false'
         run: |
           APP="가계부.app"
           ASSETS="Sources/Gakyebu/Assets.xcassets/AppIcon.appiconset"
@@ -33,7 +49,6 @@ jobs:
 
           cp "$BINARY" "$APP/Contents/MacOS/Gakyebu"
 
-          # icns 생성
           ICONSET="/tmp/AppIcon.iconset"
           rm -rf "$ICONSET"
           mkdir -p "$ICONSET"
@@ -56,9 +71,11 @@ jobs:
           codesign --force --deep --sign - "$APP"
 
       - name: ZIP 압축
+        if: steps.check.outputs.SKIP == 'false'
         run: zip -r 가계부.zip 가계부.app
 
       - name: appcast.xml 업데이트
+        if: steps.check.outputs.SKIP == 'false'
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
           DATE=$(date -R)
@@ -88,11 +105,13 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add docs/appcast.xml
-          git commit -m "Update appcast.xml for v$VERSION"
+          git commit -m "Update appcast.xml for v$VERSION [skip ci]"
           git push origin HEAD:main
 
-      - name: GitHub Release 생성 및 업로드
+      - name: 태그 생성 및 Release 업로드
+        if: steps.check.outputs.SKIP == 'false'
         uses: softprops/action-gh-release@v2
         with:
-          files: 가계부.zip
+          tag_name: "v${{ steps.version.outputs.VERSION }}"
           name: "가계부 v${{ steps.version.outputs.VERSION }}"
+          files: 가계부.zip
